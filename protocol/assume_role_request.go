@@ -7,7 +7,6 @@ import (
 )
 
 type AssumeRoleRequest struct {
-	Rolename string
 }
 
 type RoleCredentials struct {
@@ -19,7 +18,7 @@ type RoleCredentials struct {
 }
 
 func (arr AssumeRoleRequest) MarshalBinary() ([]byte, error) {
-	return LVString(arr.Rolename).MarshalBinary()
+	return LVString("").MarshalBinary()
 }
 
 func (arr *AssumeRoleRequest) UnmarshalBinary(data []byte) error {
@@ -29,8 +28,6 @@ func (arr *AssumeRoleRequest) UnmarshalBinary(data []byte) error {
 	if err != nil {
 		return err
 	}
-
-	arr.Rolename = string(*lvs)
 
 	return nil
 }
