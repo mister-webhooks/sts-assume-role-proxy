@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.8
 	github.com/stretchr/testify v1.11.1
+	github.com/urfave/cli/v2 v2.27.7
 )
 
 require (
@@ -20,6 +21,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.16 // indirect
 	github.com/aws/smithy-go v1.24.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 )
 
 require (
@@ -27,8 +31,5 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
-	golang.org/x/tools v0.0.0-20200416061724-5744cfde56ed // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	mellium.im/sysexit v0.4.0
 )

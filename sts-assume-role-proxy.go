@@ -15,7 +15,7 @@ import (
 	"github.com/mister-webhooks/sts-assume-role-proxy/internal/unixsock"
 	"github.com/mister-webhooks/sts-assume-role-proxy/protocol"
 	"github.com/mister-webhooks/sts-assume-role-proxy/typedsocket"
-	"mellium.im/sysexit"
+	"github.com/urfave/cli/v2"
 )
 
 func server(config *config.ServerConfiguration) {
@@ -149,35 +149,63 @@ func client(config *config.ServerConfiguration) {
 	log.Printf("received: %+v", reply)
 }
 
-func usage() {
-	fmt.Println("usage: sts-assume-role-proxy <server | client> <cfgfile>")
-	os.Exit(int(sysexit.ErrUsage))
-}
-
-func main() {
-	if len(os.Args) < 3 {
-		usage()
-	}
-
-	cfgFile := os.Args[2]
-	cfgData, err := os.ReadFile(cfgFile)
+func loadConfig(filepath string) (*config.ServerConfiguration, error) {
+	cfgData, err := os.ReadFile(filepath)
 
 	if err != nil {
-		log.Fatalf("error reading configuration file: %s", err)
+		return nil, fmt.Errorf("error reading configuration file: %s", err)
 	}
 
 	cfg, err := config.NewConfigurationFromYAML(cfgData)
 
 	if err != nil {
-		log.Fatalf("error parsing configuration file: %s", err)
+		return nil, fmt.Errorf("error parsing configuration file: %s", err)
 	}
 
-	switch os.Args[1] {
-	case "server":
-		server(cfg)
-	case "client":
-		client(cfg)
-	default:
-		usage()
+	return cfg, nil
+}
+
+func main() {
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Value:   "/usr/local/etc/sts_assume_role_proxy.conf",
+			},
+		},
+		Commands: []*cli.Command{
+			{
+				Name:  "server",
+				Usage: "run the sts-assume-role-proxy server",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := loadConfig(ctx.String("config"))
+
+					if err != nil {
+						return err
+					}
+
+					server(cfg)
+					return nil
+				},
+			}, {
+				Name:  "client",
+				Usage: "run the sts-assume-role-proxy client",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := loadConfig(ctx.String("config"))
+
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					client(cfg)
+					return nil
+				},
+			},
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
 }
