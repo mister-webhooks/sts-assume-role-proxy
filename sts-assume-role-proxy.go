@@ -9,32 +9,25 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aws/aws-sdk-go-v2/config"
+	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/mister-webhooks/sts-assume-role-proxy/internal/config"
 	"github.com/mister-webhooks/sts-assume-role-proxy/internal/unixsock"
 	"github.com/mister-webhooks/sts-assume-role-proxy/protocol"
 	"github.com/mister-webhooks/sts-assume-role-proxy/typedsocket"
 	"mellium.im/sysexit"
 )
 
-const SOCKET_PATH = "/tmp/sts-assume-role-proxy.sock"
-
-var AccessTable = map[string]map[uint]string{
-	"[root]": {
-		501: "arn:aws:iam::350784047695:role/webhooksd-task-role",
-	},
-}
-
-func server() {
-	if _, err := os.Stat(SOCKET_PATH); err == nil {
-		if err := os.Remove(SOCKET_PATH); err != nil {
+func server(config *config.ServerConfiguration) {
+	if _, err := os.Stat(config.SocketPath); err == nil {
+		if err := os.Remove(config.SocketPath); err != nil {
 			log.Println("Error removing existing socket file:", err)
 			return
 		}
 	}
 
 	listener, err := typedsocket.NewTypedServer[*protocol.AssumeRoleRequest, protocol.RoleCredentials](func() (net.Listener, error) {
-		return net.Listen("unix", SOCKET_PATH)
+		return net.Listen("unix", config.SocketPath)
 	})
 
 	if err != nil {
@@ -52,7 +45,7 @@ func server() {
 		os.Exit(0)
 	}(sigc)
 
-	log.Println("Server listening on", SOCKET_PATH)
+	log.Println("Server listening on", config.SocketPath)
 
 	listener.Serve(context.Background(), func(ctx context.Context, tc *typedsocket.TypedConnection[protocol.RoleCredentials, *protocol.AssumeRoleRequest]) error {
 		/*
@@ -85,7 +78,7 @@ func server() {
 		/*
 		 * Determine if the request is serviceable
 		 */
-		roleARN, ok := AccessTable[pinfo.Namespace][pinfo.Uid]
+		roleARN, ok := config.AccessTable.Lookup(pinfo.Namespace, pinfo.Uid)
 
 		if ok {
 			log.Printf("client at pid %d {%s:%d} is allowed access to role '%s'", pinfo.Pid, pinfo.Namespace, pinfo.Uid, roleARN)
@@ -96,7 +89,7 @@ func server() {
 				return fmt.Errorf("error retrieving own hostname: %w", err)
 			}
 
-			cfg, err := config.LoadDefaultConfig(ctx)
+			cfg, err := aws_config.LoadDefaultConfig(ctx)
 
 			if err != nil {
 				return fmt.Errorf("could not load AWS credentials: %w", err)
@@ -109,7 +102,7 @@ func server() {
 			result, err := stsService.AssumeRole(ctx, &sts.AssumeRoleInput{RoleArn: &roleARN, RoleSessionName: &sessionIdentifier})
 
 			if err != nil {
-				return err
+				return fmt.Errorf("could not request credentials on behalf of {%s:%d}: %w", pinfo.Namespace, pinfo.Uid, err)
 			}
 
 			return tc.Send(protocol.RoleCredentials{
@@ -132,9 +125,8 @@ func server() {
 	})
 }
 
-func client() {
-	log.Printf("current process id: %d", os.Getpid())
-	conn, err := typedsocket.Dial[protocol.AssumeRoleRequest, *protocol.RoleCredentials]("unix", SOCKET_PATH)
+func client(config *config.ServerConfiguration) {
+	conn, err := typedsocket.Dial[protocol.AssumeRoleRequest, *protocol.RoleCredentials]("unix", config.SocketPath)
 
 	if err != nil {
 		log.Fatal(err)
@@ -158,20 +150,33 @@ func client() {
 }
 
 func usage() {
-	fmt.Println("usage: sts-assume-role-proxy <server | client>")
+	fmt.Println("usage: sts-assume-role-proxy <server | client> <cfgfile>")
 	os.Exit(int(sysexit.ErrUsage))
 }
 
 func main() {
-	if len(os.Args) == 1 {
+	if len(os.Args) < 3 {
 		usage()
+	}
+
+	cfgFile := os.Args[2]
+	cfgData, err := os.ReadFile(cfgFile)
+
+	if err != nil {
+		log.Fatalf("error reading configuration file: %s", err)
+	}
+
+	cfg, err := config.NewConfigurationFromYAML(cfgData)
+
+	if err != nil {
+		log.Fatalf("error parsing configuration file: %s", err)
 	}
 
 	switch os.Args[1] {
 	case "server":
-		server()
+		server(cfg)
 	case "client":
-		client()
+		client(cfg)
 	default:
 		usage()
 	}
