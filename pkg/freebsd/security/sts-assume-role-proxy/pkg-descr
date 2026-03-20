@@ -1,0 +1,1 @@
+sts-assume-role-proxy allows a single EC2 instance to share multiple roles, and assign roles to proceses based on their jail name and the user id they run under.
