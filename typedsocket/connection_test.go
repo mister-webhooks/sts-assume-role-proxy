@@ -1,6 +1,7 @@
 package typedsocket_test
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"testing"
@@ -62,44 +63,41 @@ func (pc *PipeConn) SetWriteDeadline(time.Time) error {
 	return nil
 }
 
-type bmstring struct {
-	*string
+type JString struct {
+	String *string
 }
 
-func BMString(str string) bmstring {
-	return bmstring{string: &str}
+func NewJString(str string) JString {
+	return JString{String: &str}
 }
 
-func (s bmstring) MarshalBinary() ([]byte, error) {
-	return []byte(*s.string), nil
+func (s JString) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String)
 }
 
-func (s *bmstring) UnmarshalBinary(data []byte) error {
-	strdat := string(data)
-	s.string = &strdat
-
-	return nil
+func (s *JString) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &s.String)
 }
 
 func TestTypedConnection(t *testing.T) {
 	t.Run("happy path send / recv works", func(t *testing.T) {
 		pc := NewPipeConn()
 
-		rtc := typedsocket.NewTypedConnection[bmstring, *bmstring](pc)
-		wtc := typedsocket.NewTypedConnection[bmstring, *bmstring](pc)
+		rtc := typedsocket.NewTypedConnection[JString, *JString](pc)
+		wtc := typedsocket.NewTypedConnection[JString, *JString](pc)
 
 		var err error
 
 		go func() {
-			err := wtc.Send(BMString("hi there"))
+			err := wtc.Send(NewJString("hi there"))
 			require.NoError(t, err)
 		}()
 
-		x := new(bmstring)
+		x := new(JString)
 		err = rtc.Recv(x)
 
 		require.NoError(t, err)
 
-		assert.Equal(t, BMString("hi there"), *x)
+		assert.Equal(t, NewJString("hi there"), *x)
 	})
 }

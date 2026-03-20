@@ -1,16 +1,15 @@
 package typedsocket
 
 import (
-	"encoding"
 	"fmt"
 	"net"
 )
 
-type TypedClient[Q encoding.BinaryMarshaler, R encoding.BinaryUnmarshaler] struct {
+type TypedClient[Q any, R any] struct {
 	*TypedConnection[Q, R]
 }
 
-func Dial[Q encoding.BinaryMarshaler, R encoding.BinaryUnmarshaler](network string, address string) (*TypedClient[Q, R], error) {
+func Dial[Q any, R any](network string, address string) (*TypedClient[Q, R], error) {
 	conn, err := net.Dial(network, address)
 
 	if err != nil {

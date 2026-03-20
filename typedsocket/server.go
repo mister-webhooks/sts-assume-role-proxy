@@ -2,17 +2,16 @@ package typedsocket
 
 import (
 	"context"
-	"encoding"
 	"fmt"
 	"log"
 	"net"
 )
 
-type TypedServer[Q encoding.BinaryUnmarshaler, R encoding.BinaryMarshaler] struct {
+type TypedServer[Q any, R any] struct {
 	listener net.Listener
 }
 
-func NewTypedServer[Q encoding.BinaryUnmarshaler, R encoding.BinaryMarshaler](
+func NewTypedServer[Q any, R any](
 	mkListener func() (net.Listener, error),
 ) (*TypedServer[Q, R], error) {
 	listener, err := mkListener()

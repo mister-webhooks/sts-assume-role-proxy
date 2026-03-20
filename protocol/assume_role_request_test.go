@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,12 +18,12 @@ func TestRoleCredentials(t *testing.T) {
 			SecretAccessKey: "secret",
 			SessionToken:    "token",
 		}
-		encoded, err := rc.MarshalBinary()
+		encoded, err := json.Marshal(rc)
 		decoded := new(RoleCredentials)
 
 		require.NoError(t, err)
 
-		err = decoded.UnmarshalBinary(encoded)
+		err = json.Unmarshal(encoded, decoded)
 
 		assert.NoError(t, err)
 		assert.Equal(t, rc.Result, decoded.Result)
