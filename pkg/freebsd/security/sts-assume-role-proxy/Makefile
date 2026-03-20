@@ -1,5 +1,5 @@
 PORTNAME=	sts-assume-role-proxy
-DISTVERSIONPREFIX=	v
+DISTVERSIONPREFIX=v
 DISTVERSION=	0.1.0
 PORTREVISION=	0
 CATEGORIES=	security
@@ -13,10 +13,7 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 
 USES=		go:1.23+,modules
 
-USE_GITHUB=	yes
-GH_ACCOUNT=	mister-webhooks
-
-GO_PKGNAME=	github.com/${GH_ACCOUNT}/${PORTNAME}
+GO_MODULE=	github.com/mister-webhooks/sts-assume-role-proxy
 
 PLIST_FILES=	bin/${PORTNAME}
 
