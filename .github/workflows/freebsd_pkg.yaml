@@ -1,0 +1,37 @@
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Build FreeBSD package
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v6
+    - name: Build package
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        release: "14.2"
+        arch: aarch64
+        prepare: |
+          echo "ALLOW_UNSUPPORTED_SYSTEM=yes" >> /etc/make.conf
+          pkg install -y go125 gitup py311-awscli bsddialog portconfig
+          gitup ports > /dev/null
+        run: |
+          export VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's/^v//')
+          env
+          cd pkg/freebsd/security/sts-assume-role-proxy/
+          cd /usr/ports
+          patch -p1 < $OLDPWD/ports-tree.patch
+          cd $OLDPWD
+          make DISTVERSION=$VERSION PKGNAMESUFFIX='-${OPSYS}-${OSREL}-${ARCH}' makesum package
+    - name: Add compiled package to release ${{ github.ref_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload ${{ github.ref_name }} pkg/freebsd/security/sts-assume-role-proxy/work/pkg/* --clobber

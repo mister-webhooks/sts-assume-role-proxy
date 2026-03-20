@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# PROVIDE: sts_assume_role_proxy
+# REQUIRE: NETWORKING SERVERS DAEMON
+# BEFORE: LOGIN
+# KEYWORD: shutdown
+
+# Add sts_assume_role_proxy_enable="YES" to /etc/rc.conf to enable sts_assume_role_proxy
+
+# Additional variables you can define are:
+
+# sts_assume_role_proxy_config (path):                Config file path.
+#                                                     Set to %%ETCDIR%%/sts_assume_role_proxy.toml by default.
+# sts_assume_role_proxy_logdir (dir):                 Set dir to store sts_assume_role_proxy logs in.
+#                                                     Default is "/var/log/sts_assume_role_proxy"
+# sts_assume_role_proxy_user (string):                Set user to run sts_assume_role_proxy.
+#                                                     Default is "%%USER%%".
+# sts_assume_role_proxy_group (string):               Set group to run sts_assume_role_proxy.
+#                                                     Default is "%%GROUP%%".
+# sts_assume_role_proxy_pidfile (string):             Set full path to pid file
+#                                                     Default is "/var/run/sts_assume_role_proxy.pid"
+# sts_assume_role_proxy_syslog_output_enable (bool):  Set tor YES to enable syslog output
+#                                                     Default is "NO". See daemon(8).
+# sts_assume_role_proxy_syslog_output_tag (str):      Set syslog tag if syslog enabled.
+#                                                     Default is "sts_assume_role_proxy". See daemon(8).
+# sts_assume_role_proxy_syslog_output_priority (str): Set syslog priority if syslog enabled.
+#                                                     Default is "info". See daemon(8).
+# sts_assume_role_proxy_syslog_output_facility (str): Set syslog facility if syslog enabled.
+#                                                      Default is "daemon". See daemon(8).
+#
+
+. /etc/rc.subr
+
+name=sts_assume_role_proxy
+rcvar=sts_assume_role_proxy_enable
+
+load_rc_config $name
+
+: ${sts_assume_role_proxy_enable:="NO"}
+: ${sts_assume_role_proxy_config="%%ETCDIR%%/sts_assume_role_proxy.conf"}
+: ${sts_assume_role_proxy_logdir:="/var/log/sts_assume_role_proxy"}
+: ${sts_assume_role_proxy_user:="%%USER%%"}
+: ${sts_assume_role_proxy_group:="%%GROUP%%"}
+: ${sts_assume_role_proxy_pidfile:="/var/run/${name}.pid"}
+: ${sts_assume_role_proxy_syslog_output_enable:="NO"}
+
+pidfile=${sts_assume_role_proxy_pidfile}
+procname="%%PREFIX%%/bin/sts-assume-role-proxy"
+command="/usr/sbin/daemon"
+
+start_precmd="sts_assume_role_proxy_start_precmd"
+
+if checkyesno sts_assume_role_proxy_syslog_output_enable; then
+    if [ -n "${sts_assume_role_proxy_syslog_output_tag}" ]; then
+        sts_assume_role_proxy_syslog_output_flags="-T ${sts_assume_role_proxy_syslog_output_tag}"
+    else
+        sts_assume_role_proxy_syslog_output_flags="-T ${name}"
+    fi
+    if [ -n "${sts_assume_role_proxy_syslog_output_priority}" ]; then
+        sts_assume_role_proxy_syslog_output_flags="${sts_assume_role_proxy_syslog_output_flags} -s ${sts_assume_role_proxy_syslog_output_priority}"
+    fi
+
+    if [ -n "${sts_assume_role_proxy_syslog_output_facility}" ]; then
+        sts_assume_role_proxy_syslog_output_flags="${sts_assume_role_proxy_syslog_output_flags} -l ${sts_assume_role_proxy_syslog_output_facility}"
+    fi
+fi
+
+command_args="-f -t ${name} ${sts_assume_role_proxy_syslog_output_flags} -p ${pidfile} /usr/bin/env ${sts_assume_role_proxy_env} ${procname} --config ${sts_assume_role_proxy_config} server"
+
+sts_assume_role_proxy_start_precmd()
+{
+    if [ ! -e ${pidfile} ]; then
+        install -o ${sts_assume_role_proxy_user} -g ${sts_assume_role_proxy_group} /dev/null ${pidfile}
+    fi
+
+    if [ ! -d ${sts_assume_role_proxy_logdir} ]; then
+        install -d -m 0750 -o ${sts_assume_role_proxy_user} -g ${sts_assume_role_proxy_group} ${sts_assume_role_proxy_logdir}
+    fi
+}
+
+run_rc_command "$@"

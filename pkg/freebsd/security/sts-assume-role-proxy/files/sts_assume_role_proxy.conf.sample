@@ -1,0 +1,4 @@
+socket_path: /var/run/sts-assume-role-proxy.socket
+rules:
+  '[root]':
+    0: 'arn:aws:iam::123456789012:role/do-some-thing'

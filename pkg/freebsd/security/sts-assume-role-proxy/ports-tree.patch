@@ -1,0 +1,26 @@
+diff --git a/GIDs b/GIDs
+index 5c1c3a79d..c7115e2de 100644
+--- a/GIDs
++++ b/GIDs
+@@ -688,7 +688,7 @@ zonemaster:*:736:
+ # free: 744
+ # free: 745
+ # free: 746
+-# free: 747
++sts-assume-role-proxy:*:747:
+ # free: 748
+ # free: 749
+ # free: 750
+diff --git a/UIDs b/UIDs
+index 62bc4668a..bc7dc2bd5 100644
+--- a/UIDs
++++ b/UIDs
+@@ -694,7 +694,7 @@ zonemaster:*:736:736::0:0:Zonemaster Daemon:/nonexistent:/usr/sbin/nologin
+ # free: 744
+ # free: 745
+ # free: 746
+-# free: 747
++sts-assume-role-proxy:*:747:7474::0:0:STS Assume Role Proxy:/nonexistent:/usr/sbin/nologin
+ # free: 748
+ # free: 749
+ # free: 750

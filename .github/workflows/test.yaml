@@ -1,0 +1,22 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Tests
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run tests in FreeBSD VM
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        release: "14.2"
+
+        prepare: |
+          
+        run: |
+          echo "ALLOW_UNSUPPORTED_SYSTEM=yes" >> /etc/make.conf
+          pkg install -y go125
+
+          go125 test ./...
