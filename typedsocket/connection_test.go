@@ -1,71 +1,64 @@
 package typedsocket_test
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/mister-webhooks/sts-assume-role-proxy/typedsocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type ChanConn struct {
-	c chan byte
+type PipeConn struct {
+	reader *io.PipeReader
+	writer *io.PipeWriter
 }
 
-func NewChanConnPair() (*ChanConn, *ChanConn) {
-	c := make(chan byte, 1024*1024)
+func NewPipeConn() *PipeConn {
+	r, w := io.Pipe()
 
-	return &ChanConn{
-			c,
-		}, &ChanConn{
-			c,
-		}
-}
-
-func (cc *ChanConn) Read(b []byte) (int, error) {
-	i := 0
-
-	for ; i < cap(b); i++ {
-		b[i] = <-cc.c
+	return &PipeConn{
+		reader: r,
+		writer: w,
 	}
-
-	return i, nil
 }
 
-func (cc *ChanConn) Write(b []byte) (int, error) {
-	i := 0
-
-	for ; i < len(b); i++ {
-		cc.c <- b[i]
-	}
-
-	return i, nil
+func (pc *PipeConn) Read(b []byte) (int, error) {
+	return pc.reader.Read(b)
 }
 
-func (cc *ChanConn) Close() error {
-	close(cc.c)
+func (pc *PipeConn) Write(b []byte) (int, error) {
+	i, e := pc.writer.Write(b)
+	return i, e
+}
+
+func (pc *PipeConn) Close() error {
+	err1 := pc.reader.Close()
+	err2 := pc.writer.Close()
+
+	return multierror.Append(err1, err2)
+}
+
+func (pc *PipeConn) LocalAddr() net.Addr {
 	return nil
 }
 
-func (cc *ChanConn) LocalAddr() net.Addr {
+func (pc *PipeConn) RemoteAddr() net.Addr {
 	return nil
 }
 
-func (cc *ChanConn) RemoteAddr() net.Addr {
+func (pc *PipeConn) SetDeadline(time.Time) error {
 	return nil
 }
 
-func (cc *ChanConn) SetDeadline(time.Time) error {
+func (pc *PipeConn) SetReadDeadline(time.Time) error {
 	return nil
 }
 
-func (cc *ChanConn) SetReadDeadline(time.Time) error {
-	return nil
-}
-
-func (cc *ChanConn) SetWriteDeadline(time.Time) error {
+func (pc *PipeConn) SetWriteDeadline(time.Time) error {
 	return nil
 }
 
@@ -90,14 +83,17 @@ func (s *bmstring) UnmarshalBinary(data []byte) error {
 
 func TestTypedConnection(t *testing.T) {
 	t.Run("happy path send / recv works", func(t *testing.T) {
-		r, w := NewChanConnPair()
+		pc := NewPipeConn()
 
-		rtc := typedsocket.NewTypedConnection[bmstring, *bmstring](r)
-		wtc := typedsocket.NewTypedConnection[bmstring, *bmstring](w)
+		rtc := typedsocket.NewTypedConnection[bmstring, *bmstring](pc)
+		wtc := typedsocket.NewTypedConnection[bmstring, *bmstring](pc)
 
-		err := wtc.Send(BMString("hi there"))
+		var err error
 
-		require.NoError(t, err)
+		go func() {
+			err := wtc.Send(BMString("hi there"))
+			require.NoError(t, err)
+		}()
 
 		x := new(bmstring)
 		err = rtc.Recv(x)
