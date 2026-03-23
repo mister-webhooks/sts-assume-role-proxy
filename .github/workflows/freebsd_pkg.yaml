@@ -30,6 +30,8 @@ jobs:
           patch -p1 < $OLDPWD/ports-tree.patch
           cd $OLDPWD
           make DISTVERSION=$VERSION PKGNAMESUFFIX='-${OPSYS}-${OSREL}-${ARCH}' makesum package
+          cd work/pkg
+          pkg repo .
     - name: Add compiled package to release ${{ github.ref_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

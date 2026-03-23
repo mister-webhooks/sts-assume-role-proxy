@@ -20,7 +20,7 @@ index 62bc4668a..bc7dc2bd5 100644
  # free: 745
  # free: 746
 -# free: 747
-+sts-assume-role-proxy:*:747:7474::0:0:STS Assume Role Proxy:/nonexistent:/usr/sbin/nologin
++sts-assume-role-proxy:*:747:747::0:0:STS Assume Role Proxy:/nonexistent:/usr/sbin/nologin
  # free: 748
  # free: 749
  # free: 750
