@@ -13,7 +13,11 @@ LICENSE_FILE=	${WRKSRC}/LICENSE
 
 USES=		go:1.23+,modules
 
+USE_GITHUB=	yes
 GO_MODULE=	github.com/mister-webhooks/sts-assume-role-proxy
+GO_MOD_DIST=	github
+GH_ACCOUNT=	mister-webhooks
+GH_PROJECT=	sts-assume-role-proxy
 
 STS_ASSUME_ROLE_PROXY_USER?=	sts-assume-role-proxy
 STS_ASSUME_ROLE_PORXY_GROUP?=	sts-assume-role-proxy
