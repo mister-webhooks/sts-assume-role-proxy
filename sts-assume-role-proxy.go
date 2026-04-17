@@ -89,7 +89,7 @@ func server(config *config.ServerConfiguration) {
 				return fmt.Errorf("error retrieving own hostname: %w", err)
 			}
 
-			cfg, err := aws_config.LoadDefaultConfig(ctx)
+			cfg, err := aws_config.LoadDefaultConfig(ctx, aws_config.WithEC2IMDSRegion())
 
 			if err != nil {
 				return fmt.Errorf("could not load AWS credentials: %w", err)
