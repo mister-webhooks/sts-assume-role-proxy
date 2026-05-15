@@ -21,6 +21,7 @@ jobs:
         prepare: |
           echo "ALLOW_UNSUPPORTED_SYSTEM=yes" >> /etc/make.conf
           pkg install -y go125 gitup py311-awscli bsddialog portconfig
+          cp .github/resources/gitup.conf /usr/local/etc/gitup.conf
           gitup ports > /dev/null
         run: |
           export VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's/^v//')
