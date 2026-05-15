@@ -1,7 +1,5 @@
 on:
-  release:
-    types:
-      - published
+  push:
 
 jobs:
   test:
@@ -19,8 +17,11 @@ jobs:
         release: "14.2"
         arch: aarch64
         prepare: |
+          pwd
+          ls -al
           echo "ALLOW_UNSUPPORTED_SYSTEM=yes" >> /etc/make.conf
-          pkg install -y go125 gitup py311-awscli bsddialog portconfig
+          pkg install -y go125 gitup pcre2 py311-awscli bsddialog portconfig
+          cp .github/resources/gitup.conf /usr/local/etc/gitup.conf
           gitup ports > /dev/null
         run: |
           export VERSION=$(echo "${GITHUB_REF_NAME}" | sed 's/^v//')
