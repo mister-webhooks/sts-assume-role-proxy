@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/mister-webhooks/sts-assume-role-proxy/protocol"
@@ -34,7 +35,17 @@ func (pcp proxyCredentialsProvider) Retrieve(ctx context.Context) (aws.Credentia
 	reply := new(protocol.RoleCredentials)
 
 	if err = conn.Recv(reply); err != nil {
-		return aws.Credentials{}, nil
+		return aws.Credentials{}, err
+	}
+
+	if reply.Result != protocol.CredentialsResultSuccess {
+		switch reply.Result {
+		case protocol.CredentialsResultProxyError:
+			return aws.Credentials{}, fmt.Errorf("proxy indicated internal error during request")
+		case protocol.CredentialsResultForbidden:
+			return aws.Credentials{}, fmt.Errorf("request for credentials was denied")
+		}
+		return aws.Credentials{}, fmt.Errorf("received unknown result code %x from proxy", reply.Result)
 	}
 
 	return aws.Credentials{

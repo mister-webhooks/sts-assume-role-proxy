@@ -16,6 +16,7 @@ import (
 	"github.com/mister-webhooks/sts-assume-role-proxy/protocol"
 	"github.com/mister-webhooks/sts-assume-role-proxy/typedsocket"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/multierr"
 )
 
 func server(config *config.ServerConfiguration) {
@@ -80,48 +81,51 @@ func server(config *config.ServerConfiguration) {
 		 */
 		roleARN, ok := config.AccessTable.Lookup(pinfo.Namespace, pinfo.Uid)
 
-		if ok {
-			log.Printf("client at pid %d {%s:%d} is allowed access to role '%s'", pinfo.Pid, pinfo.Namespace, pinfo.Uid, roleARN)
-
-			hostname, err := os.Hostname()
-
-			if err != nil {
-				return fmt.Errorf("error retrieving own hostname: %w", err)
-			}
-
-			cfg, err := aws_config.LoadDefaultConfig(ctx, aws_config.WithEC2IMDSRegion())
-
-			if err != nil {
-				return fmt.Errorf("could not load AWS credentials: %w", err)
-			}
-
-			stsService := sts.NewFromConfig(cfg)
-
-			sessionIdentifier := fmt.Sprintf("%d@%s", pinfo.Pid, hostname)
-
-			result, err := stsService.AssumeRole(ctx, &sts.AssumeRoleInput{RoleArn: &roleARN, RoleSessionName: &sessionIdentifier})
-
-			if err != nil {
-				return fmt.Errorf("could not request credentials on behalf of {%s:%d}: %w", pinfo.Namespace, pinfo.Uid, err)
-			}
-
-			return tc.Send(protocol.RoleCredentials{
-				Result:          0x0,
-				Expiration:      *result.Credentials.Expiration,
-				AccessKeyId:     *result.Credentials.AccessKeyId,
-				SecretAccessKey: *result.Credentials.SecretAccessKey,
-				SessionToken:    *result.Credentials.SessionToken,
-			})
-		} else {
+		if !ok {
 			log.Printf("client at pid %d {%s:%d} is not allowed access", pinfo.Pid, pinfo.Namespace, pinfo.Uid)
 
 			return tc.Send(protocol.RoleCredentials{
-				Result:          0xFF,
-				AccessKeyId:     "",
-				SecretAccessKey: "",
-				SessionToken:    "",
+				Result: 0xFF,
 			})
 		}
+
+		log.Printf("client at pid %d {%s:%d} is allowed access to role '%s'", pinfo.Pid, pinfo.Namespace, pinfo.Uid, roleARN)
+
+		hostname, err := os.Hostname()
+
+		if err != nil {
+			return multierr.Combine(
+				tc.Send(protocol.RoleCredentials{Result: protocol.CredentialsResultProxyError}),
+				fmt.Errorf("error retrieving own hostname: %w", err))
+		}
+
+		cfg, err := aws_config.LoadDefaultConfig(ctx, aws_config.WithEC2IMDSRegion())
+
+		if err != nil {
+			return multierr.Combine(
+				tc.Send(protocol.RoleCredentials{Result: protocol.CredentialsResultProxyError}),
+				fmt.Errorf("could not load AWS credentials: %w", err))
+		}
+
+		stsService := sts.NewFromConfig(cfg)
+
+		sessionIdentifier := fmt.Sprintf("%d@%s", pinfo.Pid, hostname)
+
+		result, err := stsService.AssumeRole(ctx, &sts.AssumeRoleInput{RoleArn: &roleARN, RoleSessionName: &sessionIdentifier})
+
+		if err != nil {
+			return multierr.Combine(
+				tc.Send(protocol.RoleCredentials{Result: protocol.CredentialsResultProxyError}),
+				fmt.Errorf("could not request credentials on behalf of {%s:%d}: %w", pinfo.Namespace, pinfo.Uid, err))
+		}
+
+		return tc.Send(protocol.RoleCredentials{
+			Result:          0x0,
+			Expiration:      *result.Credentials.Expiration,
+			AccessKeyId:     *result.Credentials.AccessKeyId,
+			SecretAccessKey: *result.Credentials.SecretAccessKey,
+			SessionToken:    *result.Credentials.SessionToken,
+		})
 	})
 }
 
